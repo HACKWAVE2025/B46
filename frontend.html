@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Health Consultation</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        /* General Styles */
+        :root {
+            --primary-color: #3B82F6; /* A richer blue */
+            --primary-color-dark: #2563EB;
+            --secondary-color: #10B981; /* A vibrant green */
+            --background-color: #F8F9FA; /* Lighter grey */
+            --surface-color: #FFFFFF;
+            --text-color: #1F2937; /* Darker grey for better contrast */
+            --text-color-light: #6B7280;
+            --border-color: #E5E7EB;
+            --danger-color: #EF4444;
+            --danger-color-dark: #DC2626;
+            --success-color: #22C55E;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --shadow-color-hover: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Roboto', 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding-top: 70px; /* Offset for sticky navbar */
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        
+        h2, h3, h4 {
+            color: var(--text-color);
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        h2 { font-size: 2rem; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+        h4 { font-size: 1.2rem; margin-bottom: 0.75rem; }
+
+        /* Views */
+        .view { display: none; animation: fadeIn 0.5s; }
+        .view.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Navbar */
+        nav {
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: saturate(180%) blur(10px);
+            color: var(--text-color);
+            padding: 0 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1001;
+            height: 70px;
+            transition: box-shadow 0.3s ease;
+        }
+        .nav-logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-family: 'Poppins', sans-serif;
+        }
+        nav a, nav button {
+            color: var(--text-color-light);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        nav a:hover {
+            background-color: #F3F4F6;
+            color: var(--text-color);
+        }
+        #nav-links { display: flex; align-items: center; gap: 10px; }
+        #nav-links button {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        #nav-links button:hover {
+            background-color: var(--primary-color-dark);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+        .modal-content {
+            background-color: var(--surface-color);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            animation: slideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Cards & Lists */
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px var(--shadow-color-hover);
+        }
+        .history-item { border-left: 4px solid var(--secondary-color); }
+        .doctor-list .card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Dashboard Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .quick-actions button {
+            padding: 20px;
+            text-align: left;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background-color: #F9FAFB;
+            color: var(--text-color);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .quick-actions button i {
+            margin-right: 12px;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            width: 30px; /* Align text */
+        }
+        .quick-actions button:hover {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.2);
+        }
+        .quick-actions button:hover i {
+            color: white;
+        }
+        .quick-actions button.danger { background-color: #FEF2F2; border-color: #FEE2E2; }
+        .quick-actions button.danger i { color: var(--danger-color); }
+        .quick-actions button.danger:hover { background-color: var(--danger-color); border-color: var(--danger-color); }
+        .quick-actions button.danger:hover i { color: white; }
+
+        /* Forms & Inputs */
+        form { display: flex; flex-direction: column; gap: 20px; }
+        input, select, textarea, button {
+            font-family: inherit;
+        }
+        input, select, textarea {
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background-color: var(--background-color);
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            background-color: var(--surface-color);
+        }
+        textarea { resize: vertical; }
+        button {
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: var(--primary-color);
+            color: white;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        button:hover {
+            background-color: var(--primary-color-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        button.secondary { background-color: var(--secondary-color); }
+        button.secondary:hover { background-color: #059669; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        button.danger { background-color: var(--danger-color); }
+        button.danger:hover { background-color: var(--danger-color-dark); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+
+        .auth-toggle { text-align: center; margin-top: 20px; }
+        .auth-toggle a { color: var(--primary-color); cursor: pointer; text-decoration: none; font-weight: 500; }
+        .auth-toggle a:hover { text-decoration: underline; }
+
+        /* Emergency map */
+        #map { height: 500px; width: 100%; border-radius: 16px; margin-top: 20px; border: 1px solid var(--border-color); }
+
+        /* Chat */
+        .chat-box {
+            height: 400px;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            background-color: #F9FAFB;
+        }
+        .message {
+            max-width: 75%;
+            padding: 12px 18px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .message.sent {
+            background-image: linear-gradient(to right, #3B82F6, #10B981);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        .message.received {
+            background-color: #E5E7EB;
+            color: var(--text-color);
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        .chat-input { display: flex; gap: 10px; }
+        .chat-input input { flex-grow: 1; }
+        .chat-input button { padding: 0 20px; } /* Adjust padding for icon button */
+
+        /* Spinner */
+        .spinner {
+            width: 1.2em;
+            height: 1.2em;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Symptom Results */
+        #symptomResult {
+            border-left: 5px solid var(--primary-color);
+            background-color: #F9FAFB;
+            padding: 30px;
+        }
+        #symptomResult h3, #symptomResult h4 {
+            color: var(--primary-color);
+        }
+        #symptomResult ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        #symptomResult ul li {
+            padding: 8px 0 8px 30px;
+            position: relative;
+        }
+        #symptomResult ul li::before {
+            content: '\f058'; /* Font Awesome check-circle icon */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--secondary-color);
+            position: absolute;
+            left: 0;
+            top: 10px;
+        }
+        #suggestedSpecialistContainer {
+            margin-top: 20px;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal" style="display: flex;">
+        <div class="modal-content">
+            <h2>Enter Your Gemini API Key</h2>
+            <p>To use the AI features of this platform, please provide your Google Gemini API Key.</p>
+            <form id="apiKeyForm">
+                <input type="password" id="geminiApiKey" placeholder="Your API Key" required>
+                <button type="submit">Save Key</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="#" class="nav-logo" onclick="showView('homeView')"><i class="fa-solid fa-heart-pulse"></i> AI Health</a>
+        <div id="nav-links"></div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Home / Auth View -->
+        <div id="homeView" class="view active">
+            <div id="loginRegisterForm" class="card">
+                <!-- Login and Register forms will be injected here -->
+            </div>
+        </div>
+        
+        <!-- Patient Dashboard -->
+        <div id="patientDashboard" class="view">
+            <h2>Welcome, <span id="patientName"></span>!</h2>
+            <div class="card">
+                <h3>Quick Actions</h3>
+                <div class="quick-actions">
+                    <button onclick="showView('symptomCheckerView')"><i class="fa-solid fa-stethoscope"></i>AI Symptom Checker</button>
+                    <button onclick="showView('doctorDirectoryView')"><i class="fa-solid fa-user-doctor"></i>Find a Doctor</button>
+                    <button onclick="showView('appointmentsView')"><i class="fa-solid fa-calendar-check"></i>My Appointments</button>
+                    <button onclick="showView('healthHistoryView')"><i class="fa-solid fa-notes-medical"></i>My Health History</button>
+                    <button onclick="showView('emergencyView')" class="danger"><i class="fa-solid fa-truck-medical"></i>Emergency</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Dashboard -->
+        <div id="doctorDashboard" class="view">
+            <h2>Doctor Dashboard: <span id="doctorName"></span></h2>
+            <div class="card">
+                <h3>Verification Status: <span id="verificationStatus">Not Verified</span></h3>
+                <div id="credentialUploadSection">
+                    <p>Please upload your professional credentials for verification.</p>
+                    <form id="credentialForm">
+                        <input type="file" id="credentialFile" required>
+                        <button type="submit">Upload</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card">
+                 <h3>My Appointments</h3>
+                 <button onclick="showView('appointmentsView')">View Appointments</button>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="adminDashboard" class="view">
+            <h2>Admin Dashboard</h2>
+            <div class="card">
+                <h3>Doctors Awaiting Verification</h3>
+                <div id="unverifiedDoctorsList"></div>
+            </div>
+        </div>
+
+        <!-- AI Symptom Checker -->
+        <div id="symptomCheckerView" class="view">
+            <h2><i class="fa-solid fa-brain" style="color: var(--primary-color);"></i> AI Symptom Checker</h2>
+            <p>Describe your symptoms, and our AI will provide potential insights and suggest a specialist.</p>
+            <div class="card">
+                <form id="symptomForm">
+                    <textarea id="symptomsInput" rows="6" placeholder="e.g., I have a sore throat, a mild fever, and a runny nose..."></textarea>
+                    <button type="submit" id="symptomSubmitBtn">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span class="btn-text">Analyze Symptoms</span>
+                    </button>
+                </form>
+            </div>
+            <div id="symptomResult" class="card" style="display: none; margin-top: 20px;">
+                <h3><i class="fa-solid fa-circle-info"></i> Analysis Results</h3>
+                <p><strong>Disclaimer:</strong> This is not a medical diagnosis. Please consult a professional.</p>
+                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 20px 0;">
+                <h4>Potential Conditions:</h4>
+                <ul id="potentialConditions"></ul>
+                <div id="suggestedSpecialistContainer">
+                    <h4>Suggested Specialist:</h4>
+                    <p id="suggestedSpecialist"></p>
+                    <button id="findSpecialistBtn"><i class="fa-solid fa-user-doctor"></i>Find Matching Doctors</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Doctor Directory -->
+        <div id="doctorDirectoryView" class="view">
+            <h2>Verified Doctors</h2>
+            <div id="doctorList"></div>
+        </div>
+
+        <!-- Appointment Booking View -->
+        <div id="bookingView" class="view">
+             <h2 id="bookingDoctorName"></h2>
+             <p>Select an available time slot to book your appointment.</p>
+             <div id="availabilitySlots" class="card"></div>
+        </div>
+
+        <!-- Appointments View (for both patient/doctor) -->
+        <div id="appointmentsView" class="view">
+            <h2>My Appointments</h2>
+            <div id="appointmentsList"></div>
+        </div>
+        
+        <!-- Health History (Patient) -->
+        <div id="healthHistoryView" class="view">
+            <h2>My Health History</h2>
+            <div id="healthHistoryList"></div>
+        </div>
+
+        <!-- Emergency View -->
+        <div id="emergencyView" class="view">
+            <h2>Emergency Locator</h2>
+            <p>Finding your location to show nearby hospitals...</p>
+            <div id="map"></div>
+        </div>
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- jsPDF for prescriptions -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+    // --- Global State & App Initialization ---
+    const state = {
+        user: null,
+        apiKey: null
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        // Event Listeners
+        document.getElementById('apiKeyForm').addEventListener('submit', handleApiKeySubmit);
+        // More listeners will be added dynamically as forms are rendered
+        
+        // Check local storage for api key
+        const savedApiKey = localStorage.getItem('geminiApiKey');
+        if (savedApiKey) {
+            handleApiKeySubmit(null, savedApiKey);
+        } else {
+            document.getElementById('apiKeyModal').style.display = 'flex';
+        }
+    });
+
+    async function handleApiKeySubmit(event, key = null) {
+        if(event) event.preventDefault();
+        const apiKey = key || document.getElementById('geminiApiKey').value;
+        if (!apiKey) {
+            alert('Please enter an API key.');
+            return;
+        }
+        
+        const response = await apiCall('api/set_api_key', 'POST', { api_key: apiKey });
+        if (response.ok) {
+            state.apiKey = apiKey;
+            localStorage.setItem('geminiApiKey', apiKey);
+            document.getElementById('apiKeyModal').style.display = 'none';
+            initializeApp();
+        } else {
+            const error = await response.json();
+            alert(`Error setting API key: ${error.error}`);
+        }
+    }
+
+    async function initializeApp() {
+        renderAuthForms();
+        await checkLoginStatus();
+        setupEventListeners();
+    }
+    
+    function setupEventListeners() {
+        document.getElementById('symptomForm').addEventListener('submit', handleSymptomCheck);
+    }
+    
+    // --- API Helper ---
+    async function apiCall(endpoint, method = 'GET', body = null, isFormData = false) {
+        const options = {
+            method,
+            headers: {}
+        };
+        if (body) {
+            if (isFormData) {
+                options.body = body;
+            } else {
+                options.headers['Content-Type'] = 'application/json';
+                options.body = JSON.stringify(body);
+            }
+        }
+        // No absolute paths!
+        return fetch(endpoint, options);
+    }
+
+    // --- View & Component Rendering ---
+    const views = document.querySelectorAll('.view');
+    function showView(viewId) {
+        views.forEach(view => view.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        
+        // Load data for the view
+        switch(viewId) {
+            case 'patientDashboard':
+                document.getElementById('patientName').textContent = state.user.full_name;
+                break;
+            case 'doctorDashboard':
+                renderDoctorDashboard();
+                break;
+            case 'adminDashboard':
+                renderAdminDashboard();
+                break;
+            case 'doctorDirectoryView':
+                renderDoctorDirectory();
+                break;
+            case 'appointmentsView':
+                renderAppointments();
+                break;
+            case 'healthHistoryView':
+                renderHealthHistory();
+                break;
+            case 'emergencyView':
+                initEmergencyMap();
+                break;
+        }
+    }
+
+    function updateNavbar() {
+        const navLinks = document.getElementById('nav-links');
+        if (state.user) {
+            let links = `<a href="#" onclick="showView('${state.user.role.toLowerCase()}Dashboard')">Dashboard</a>`;
+            links += `<button onclick="handleLogout()">Logout</button>`;
+            navLinks.innerHTML = links;
+        } else {
+            navLinks.innerHTML = `<a href="#" onclick="showView('homeView')">Login / Register</a>`;
+        }
+    }
+
+    function renderAuthForms(showLogin = true) {
+        const container = document.getElementById('loginRegisterForm');
+        if (showLogin) {
+            container.innerHTML = `
+                <h2>Login</h2>
+                <form id="loginForm">
+                    <input type="email" id="loginEmail" placeholder="Email" required>
+                    <input type="password" id="loginPassword" placeholder="Password" required>
+                    <button type="submit"><i class="fa-solid fa-right-to-bracket"></i>Login</button>
+                </form>
+                <div class="auth-toggle">
+                    Don't have an account? <a onclick="renderAuthForms(false)">Register here</a>
+                </div>
+            `;
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        } else {
+            container.innerHTML = `
+                <h2>Register</h2>
+                <form id="registerForm">
+                    <input type="text" id="regFullName" placeholder="Full Name" required>
+                    <input type="email" id="regEmail" placeholder="Email" required>
+                    <input type="password" id="regPassword" placeholder="Password" required>
+                    <select id="regRole" required>
+                        <option value="" disabled selected>Select your role</option>
+                        <option value="Patient">I am a Patient</option>
+                        <option value="Doctor">I am a Doctor</option>
+                    </select>
+                    <div id="doctorSpecificFields" style="display: none;">
+                        <input type="text" id="regSpecialty" placeholder="Your Specialty (e.g., Cardiology)">
+                    </div>
+                    <button type="submit"><i class="fa-solid fa-user-plus"></i>Register</button>
+                </form>
+                <div class="auth-toggle">
+                    Already have an account? <a onclick="renderAuthForms(true)">Login here</a>
+                </div>
+            `;
+            document.getElementById('regRole').addEventListener('change', e => {
+                document.getElementById('doctorSpecificFields').style.display = e.target.value === 'Doctor' ? 'block' : 'none';
+            });
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+        }
+    }
+
+    // --- Auth Logic ---
+    async function checkLoginStatus() {
+        const response = await apiCall('api/current_user');
+        if (response.ok) {
+            state.user = await response.json();
+            updateNavbar();
+            showView(`${state.user.role.toLowerCase()}Dashboard`);
+        } else {
+            state.user = null;
+            updateNavbar();
+            showView('homeView');
+        }
+    }
+
+    async function handleRegister(event) {
+        event.preventDefault();
+        const body = {
+            full_name: document.getElementById('regFullName').value,
+            email: document.getElementById('regEmail').value,
+            password: document.getElementById('regPassword').value,
+            role: document.getElementById('regRole').value
+        };
+        if (body.role === 'Doctor') {
+            body.specialty = document.getElementById('regSpecialty').value;
+        }
+        
+        const response = await apiCall('api/register', 'POST', body);
+        if (response.ok) {
+            alert('Registration successful! Please login.');
+            renderAuthForms(true);
+        } else {
+            const error = await response.json();
+            alert(`Registration failed: ${error.error}`);
+        }
+    }
+
+    async function handleLogin(event) {
+        event.preventDefault();
+        const body = {
+            email: document.getElementById('loginEmail').value,
+            password: document.getElementById('loginPassword').value,
+        };
+        const response = await apiCall('api/login', 'POST', body);
+        if (response.ok) {
+            await checkLoginStatus(); // Fetch user data and update state
+        } else {
+            const error = await response.json();
+            alert(`Login failed: ${error.error}`);
+        }
+    }
+
+    async function handleLogout() {
+        await apiCall('api/logout', 'POST');
+        state.user = null;
+        updateNavbar();
+        showView('homeView');
+        renderAuthForms();
+    }
+    
+    // --- Dashboard Rendering ---
+    async function renderDoctorDashboard() {
+        document.getElementById('doctorName').textContent = state.user.full_name;
+        const response = await apiCall('api/current_user');
+        if(!response.ok) return;
+        const data = await response.json();
+        
+        const statusEl = document.getElementById('verificationStatus');
+        const uploadEl = document.getElementById('credentialUploadSection');
+        
+        if (data.verified) {
+            statusEl.textContent = '\u2705 Verified';
+            statusEl.style.color = 'var(--success-color)';
+            uploadEl.style.display = 'none';
+        } else {
+            statusEl.textContent = 'Not Verified';
+            statusEl.style.color = 'var(--danger-color)';
+            uploadEl.style.display = 'block';
+            document.getElementById('credentialForm').addEventListener('submit', handleCredentialUpload);
+        }
+    }
+
+    async function renderAdminDashboard() {
+        const response = await apiCall('api/admin/unverified_doctors');
+        const doctors = await response.json();
+        const listEl = document.getElementById('unverifiedDoctorsList');
+        if (doctors.length === 0) {
+            listEl.innerHTML = '<p>No doctors are currently awaiting verification.</p>';
+            return;
+        }
+        listEl.innerHTML = doctors.map(doc => `
+            <div class="card">
+                <p><strong>Name:</strong> ${doc.full_name}</p>
+                <p><strong>Specialty:</strong> ${doc.specialty}</p>
+                <p><strong>Document:</strong> ${doc.document_name}</p>
+                <button onclick="handleVerifyDoctor(${doc.id})">\u2705 Mark as Verified</button>
+            </div>
+        `).join('');
+    }
+
+    async function renderDoctorDirectory(specialtyFilter = null) {
+        const response = await apiCall('api/doctors');
+        let doctors = await response.json();
+        if (specialtyFilter) {
+            // Simple text matching for filter
+            doctors = doctors.filter(doc => doc.specialty.toLowerCase().includes(specialtyFilter.toLowerCase()));
+        }
+
+        const listEl = document.getElementById('doctorList');
+        if (doctors.length === 0) {
+            listEl.innerHTML = `<p>No verified doctors found${specialtyFilter ? ' for this specialty' : ''}.</p>`;
+            return;
+        }
+        listEl.innerHTML = doctors.map(doc => `
+            <div class="doctor-list card">
+                <div>
+                    <h4>Dr. ${doc.full_name}</h4>
+                    <p>${doc.specialty}</p>
+                </div>
+                <button onclick="showBookingView(${doc.id}, '${doc.full_name}')">Book Appointment</button>
+            </div>
+        `).join('');
+    }
+
+    async function renderAppointments() {
+        const response = await apiCall('api/appointments');
+        const appointments = await response.json();
+        const listEl = document.getElementById('appointmentsList');
+        if (appointments.length === 0) {
+            listEl.innerHTML = '<p>You have no appointments.</p>';
+            return;
+        }
+        
+        const isDoctor = state.user.role === 'Doctor';
+        const otherParty = isDoctor ? 'Patient' : 'Doctor';
+
+        listEl.innerHTML = appointments.map(appt => `
+            <div class="card">
+                <p><strong>Date & Time:</strong> ${new Date(appt.appointment_time).toLocaleString()}</p>
+                <p><strong>${otherParty}:</strong> ${isDoctor ? appt.patient_name : appt.doctor_name}</p>
+                <p><strong>Status:</strong> ${appt.status}</p>
+                ${isDoctor ? `
+                    <div class="doctor-actions">
+                        <textarea id="notes-${appt.id}" placeholder="Enter consultation notes here..."></textarea>
+                        <button onclick="handleScribe(this, ${appt.id})">Generate AI Summary</button>
+                        <textarea id="prescription-${appt.id}" placeholder="Enter prescription details..."></textarea>
+                        <button onclick="handleCreatePrescription(${appt.id})">Create Prescription</button>
+                    </div>`
+                : ''}
+            </div>
+        `).join('');
+    }
+    
+    async function renderHealthHistory() {
+        const response = await apiCall('api/health_history');
+        const history = await response.json();
+        const listEl = document.getElementById('healthHistoryList');
+        if(history.length === 0) {
+            listEl.innerHTML = '<p>No health history found.</p>';
+            return;
+        }
+        listEl.innerHTML = history.map(item => `
+            <div class="card history-item">
+                <h4>Appointment with Dr. ${item.doctor_name} on ${new Date(item.appointment_time).toLocaleDateString()}</h4>
+                ${item.summary ? `
+                    <div>
+                        <h5>AI Generated Summary</h5>
+                        <pre>${item.summary}</pre>
+                        <h5>Hindi Translation</h5>
+                        <pre>${item.translated_summary}</pre>
+                    </div>` : ''}
+                ${item.prescription_content ? `
+                    <div>
+                        <h5>Prescription</h5>
+                        <p>${item.prescription_content}</p>
+                        <button onclick="generatePrescriptionPDF('${item.doctor_name}', '${state.user.full_name}', '${item.prescription_content}')">Download PDF</button>
+                    </div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    // --- Feature Handlers ---
+    async function handleCredentialUpload(event) {
+        event.preventDefault();
+        const fileInput = document.getElementById('credentialFile');
+        if (fileInput.files.length === 0) {
+            alert('Please select a file to upload.');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('credential', fileInput.files[0]);
+
+        const response = await apiCall('api/upload_credential', 'POST', formData, true);
+        if (response.ok) {
+            alert('Credential uploaded successfully. It will be reviewed by an admin.');
+            renderDoctorDashboard();
+        } else {
+            alert('Upload failed.');
+        }
+    }
+    
+    async function handleVerifyDoctor(doctorId) {
+        if (!confirm('Are you sure you want to verify this doctor?')) return;
+        
+        const response = await apiCall('api/admin/verify_doctor', 'POST', { doctor_id: doctorId });
+        if(response.ok) {
+            alert('Doctor verified!');
+            renderAdminDashboard();
+        } else {
+            alert('Verification failed.');
+        }
+    }
+
+    async function handleSymptomCheck(event) {
+        event.preventDefault();
+        const symptoms = document.getElementById('symptomsInput').value;
+        if (!symptoms.trim()) {
+            alert('Please describe your symptoms.');
+            return;
+        }
+        const button = document.getElementById('symptomSubmitBtn');
+        const originalBtnContent = button.innerHTML; // Save original content
+
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner" style="display: inline-block;"></span><span class="btn-text"> Analyzing...</span>';
+
+        try {
+            const response = await apiCall('api/symptom_checker', 'POST', { symptoms });
+
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('potentialConditions').innerHTML = data.potential_conditions.map(c => `<li>${c}</li>`).join('');
+                    document.getElementById('suggestedSpecialist').textContent = data.suggested_specialist;
+                    document.getElementById('findSpecialistBtn').onclick = () => {
+                        showView('doctorDirectoryView');
+                        renderDoctorDirectory(data.suggested_specialist);
+                    };
+                    document.getElementById('symptomResult').style.display = 'block';
+                } else {
+                    alert(`Symptom check failed: ${data.error || 'Unknown error'}`);
+                }
+            } else {
+                const textError = await response.text();
+                console.error("Non-JSON response from server:", textError);
+                alert("The server returned an unexpected response. Please try again.");
+            }
+        } catch (e) {
+            console.error("Symptom checker request failed:", e);
+            alert("An error occurred. Could not get a response from the AI. Please check your API key and network connection, then try again.");
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalBtnContent; // Restore original content
+        }
+    }
+
+    async function showBookingView(doctorId, doctorName) {
+        showView('bookingView');
+        document.getElementById('bookingDoctorName').textContent = `Book an Appointment with Dr. ${doctorName}`;
+        const slotsEl = document.getElementById('availabilitySlots');
+        slotsEl.innerHTML = '<p>Loading availability...</p>';
+        
+        // This is a mock. A real implementation would be more complex.
+        const response = await apiCall(`api/doctor/availability/${doctorId}`);
+        const availability = await response.json();
+        
+        slotsEl.innerHTML = availability.map(slot => `
+            <button onclick="bookAppointment(${doctorId}, '${slot}')">${new Date(slot).toLocaleString()}</button>
+        `).join('');
+    }
+
+    async function bookAppointment(doctorId, time) {
+        if (!confirm(`Confirm booking for ${new Date(time).toLocaleString()}?`)) return;
+
+        const response = await apiCall('api/book_appointment', 'POST', {
+            doctor_id: doctorId,
+            appointment_time: time
+        });
+        if (response.ok) {
+            alert('Appointment booked successfully!');
+            showView('appointmentsView');
+        } else {
+            alert('Booking failed.');
+        }
+    }
+
+    async function handleScribe(button, appointmentId) {
+        const notes = document.getElementById(`notes-${appointmentId}`).value;
+        if (!notes) {
+            alert('Please enter consultation notes.');
+            return;
+        }
+
+        const originalBtnText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Generating...';
+
+        const formData = new FormData();
+        formData.append('notes', notes);
+        formData.append('appointment_id', appointmentId);
+        const dummyAudio = new Blob(['dummy audio'], { type: 'audio/webm' });
+        formData.append('audio', dummyAudio, 'audio.webm');
+        
+        try {
+            const response = await apiCall('api/ai_scribe', 'POST', formData, true);
+            if (response.ok) {
+                alert('AI Summary generated successfully! The patient can view it in their health history.');
+            } else {
+                const error = await response.json();
+                alert(`Failed to generate summary: ${error.error}`);
+            }
+        } catch (e) {
+            alert('An error occurred while generating the summary.');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalBtnText;
+        }
+    }
+
+    async function handleCreatePrescription(appointmentId) {
+        const content = document.getElementById(`prescription-${appointmentId}`).value;
+        if (!content) {
+            alert('Please enter prescription details.');
+            return;
+        }
+
+        const response = await apiCall('api/generate_prescription', 'POST', {
+            appointment_id: appointmentId,
+            content: content
+        });
+
+        if (response.ok) {
+            alert('Prescription created! The patient can now view and download it.');
+        } else {
+            alert('Failed to create prescription.');
+        }
+    }
+
+    function generatePrescriptionPDF(doctorName, patientName, content) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(22);
+        doc.text("Medical Prescription", 105, 20, null, null, "center");
+        
+        doc.setFontSize(12);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 40);
+        doc.text(`Doctor: Dr. ${doctorName}`, 20, 50);
+        doc.text(`Patient: ${patientName}`, 20, 60);
+        
+        doc.setLineWidth(0.5);
+        doc.line(20, 70, 190, 70);
+        
+        doc.setFontSize(16);
+        doc.text("Rx:", 20, 80);
+        
+        doc.setFontSize(12);
+        const splitContent = doc.splitTextToSize(content, 170);
+        doc.text(splitContent, 20, 90);
+        
+        doc.save(`Prescription-${patientName.replace(' ', '_')}.pdf`);
+    }
+
+    // --- Emergency Map ---
+    let map;
+    function initEmergencyMap() {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const { latitude, longitude } = position.coords;
+                if(map) map.remove(); // Remove old map instance
+                map = L.map('map').setView([latitude, longitude], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '\u00a9 OpenStreetMap'
+                }).addTo(map);
+
+                L.marker([latitude, longitude]).addTo(map)
+                    .bindPopup("Your Location")
+                    .openPopup();
+                
+                findNearbyHospitals(latitude, longitude);
+            },
+            () => { alert("Unable to retrieve your location"); }
+        );
+    }
+
+    async function findNearbyHospitals(lat, lon) {
+        // Using Overpass API for OpenStreetMap
+        const radius = 5000; // 5km
+        const query = `
+            [out:json];
+            (
+              node[\"amenity\"=\"hospital\"](around:${radius},${lat},${lon});
+              way[\"amenity\"=\"hospital\"](around:${radius},${lat},${lon});
+              relation[\"amenity\"=\"hospital\"](around:${radius},${lat},${lon});
+            );
+            out center;
+        `;
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            data.elements.forEach(hospital => {
+                if (hospital.lat && hospital.lon) {
+                    const name = hospital.tags.name || "Hospital";
+                    L.marker([hospital.lat, hospital.lon]).addTo(map)
+                        .bindPopup(name);
+                }
+            });
+        } catch (error) {
+            console.error("Error fetching hospitals:", error);
+            alert("Could not fetch nearby hospitals.");
+        }
+    }
+
+    </script>
+</body>
+</html>
