@@ -1,5 +1,5 @@
-AIHealth is an AI-driven telemedicine web platform designed to bridge the healthcare access gap between patients and certified doctors — through secure, real-time video consultations, intelligent symptom analysis, and automated health documentation.
-Built during "Hack Wave 2025" at Sreenidhi Institute of Technology,  AIHealth represents the next generation of virtual healthcare — one that not only connects patients and doctors, but also understands, assists, and records every step of care.
+AIHealth is an AI-driven telemedicine web platform designed to bridge the healthcare access gap between patients and certified doctors, through secure, real-time video consultations, intelligent symptom analysis, and automated health documentation.
+Built during "Hack Wave 2025" at Sreenidhi Institute of Technology,  AIHealth represents the next generation of virtual healthcare, one that not only connects patients and doctors, but also understands, assists, and records every step of care.
 
 Problem Statement:
 Millions of Indians still struggle to access timely healthcare! especially in rural areas where 80% of doctors are unavailable.
